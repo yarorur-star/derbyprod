@@ -99,6 +99,18 @@ def year_cols(df):
     return [c for c in df.columns if str(c) in [str(y) for y in YEARS]]
 
 
+def ensure_numeric_years(df):
+    """Гарантирует числовой тип годовых колонок (строки/None -> float, NaN -> 0).
+
+    В таблицах 4-13 колонки переименовываются в '2020'..'2024', и если группа
+    пуста (SQL вернул 0 строк), dtypes могут остаться объектовыми - без этого
+    приведения .abs() падает с TypeError: bad operand type for abs(): 'str'.
+    """
+    for c in year_cols(df):
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
+    return df
+
+
 def drop_all_zero_rows(df, total_labels=(TOTAL_LABEL,)):
     """Удаляет строки, где все значения годов равны 0 (строки итогов не трогаем)."""
     yc = year_cols(df)
@@ -255,6 +267,7 @@ def post_table_group(df):
     возрастанию: виды, страны.
     """
     df.columns = ["Виды", "Страны"] + [str(y) for y in YEARS]
+    df = ensure_numeric_years(df)
     if df.empty or df[year_cols(df)].abs().sum().sum() == 0:
         header = pd.DataFrame([["Виды", "Страны"] + [str(y) for y in YEARS]],
                               columns=df.columns)
